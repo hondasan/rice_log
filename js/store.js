@@ -78,18 +78,23 @@ const Store = (() => {
       };
       logs.push(newLog);
       write(KEYS.COOKING_LOGS, logs);
+      return newLog;
     },
 
     addCookingLogsBatch(newLogs) {
       const logs = read(KEYS.COOKING_LOGS, []);
+      const added = [];
       newLogs.forEach(log => {
-        logs.push({
+        const item = {
           id: generateUUID(),
           date: log.date,
           cups: parseFloat(log.cups) || 0
-        });
+        };
+        logs.push(item);
+        added.push(item);
       });
       write(KEYS.COOKING_LOGS, logs);
+      return added;
     },
 
     updateCookingLog(id, updatedFields) {

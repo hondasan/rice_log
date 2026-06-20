@@ -189,8 +189,10 @@ const Stock = (() => {
         oneTapBtn.classList.add('bounce');
         
         const todayStr = new Date().toISOString().split('T')[0];
-        Store.addCookingLog({ date: todayStr, cups: settings.defaultCups });
-        App.showToast(`${settings.defaultCups}合 記録しました ✓`);
+        const addedLog = Store.addCookingLog({ date: todayStr, cups: settings.defaultCups });
+        App.showToast(`${settings.defaultCups}合 記録しました ✓`, 3000, () => {
+          Store.deleteCookingLog(addedLog.id);
+        });
       };
     }
 
@@ -273,7 +275,10 @@ const Stock = (() => {
                   <span class="log-date">${month}/${date}(${dayStr})</span>
                   <span class="log-dots">${dotsHtml}</span>
                 </div>
-                <span class="log-cups number-display">${log.cups}合</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="log-cups number-display">${log.cups}合</span>
+                  <button style="background:none; border:none; font-size:1.1rem; cursor:pointer; padding:4px;" onclick="event.stopPropagation(); Stock.deleteLogFromDashboard('${log.id}')" title="削除">🗑️</button>
+                </div>
               </div>
               <div class="swipe-delete-btn" onclick="Stock.deleteLogFromDashboard('${log.id}')">削除</div>
             </div>
@@ -788,8 +793,10 @@ const Stock = (() => {
 
   function addFreqCookingLog(cups) {
     const todayStr = new Date().toISOString().split('T')[0];
-    Store.addCookingLog({ date: todayStr, cups: cups });
-    App.showToast(`${cups}合 記録しました ✓`);
+    const addedLog = Store.addCookingLog({ date: todayStr, cups: cups });
+    App.showToast(`${cups}合 記録しました ✓`, 3000, () => {
+      Store.deleteCookingLog(addedLog.id);
+    });
   }
 
   function deleteRiceStock(id) {

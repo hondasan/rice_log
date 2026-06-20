@@ -177,7 +177,10 @@ const CalendarView = (() => {
                 <div class="log-item-left">
                   <span class="log-cups number-display" style="font-size:1.1rem;">${log.cups} 合</span>
                 </div>
-                <span class="log-date" style="color:var(--color-text-sub); font-size:0.8rem;">タップして編集</span>
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span class="log-date" style="color:var(--color-text-sub); font-size:0.8rem;">編集</span>
+                  <button style="background:none; border:none; font-size:1.1rem; cursor:pointer; padding:4px;" onclick="event.stopPropagation(); CalendarView.deleteLog('${log.id}')" title="削除">🗑️</button>
+                </div>
               </div>
               <div class="swipe-delete-btn" onclick="CalendarView.deleteLog('${log.id}')">削除</div>
             </div>
@@ -264,8 +267,10 @@ const CalendarView = (() => {
    * クイック追加
    */
   function addQuickLog(date, cups) {
-    Store.addCookingLog({ date, cups });
-    App.showToast(`${cups}合 記録しました`);
+    const addedLog = Store.addCookingLog({ date, cups });
+    App.showToast(`${cups}合 記録しました`, 3000, () => {
+      Store.deleteCookingLog(addedLog.id);
+    });
   }
 
   /**
@@ -587,9 +592,13 @@ const CalendarView = (() => {
       return;
     }
 
-    Store.addCookingLogsBatch(batchSelectedDates);
+    const addedLogs = Store.addCookingLogsBatch(batchSelectedDates);
     App.closeModal();
-    App.showToast(`${batchSelectedDates.length}日分 記録しました`);
+    App.showToast(`${batchSelectedDates.length}日分 記録しました`, 3500, () => {
+      addedLogs.forEach(log => {
+        Store.deleteCookingLog(log.id);
+      });
+    });
   }
 
   return {

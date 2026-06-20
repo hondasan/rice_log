@@ -307,11 +307,33 @@ const App = (() => {
 
   let toastTimer = null;
 
-  function showToast(message, durationMs = 2200) {
+  function showToast(message, durationMs = 3000, undoCallback = null) {
     const toast = document.getElementById('toast');
     if (!toast) return;
 
-    toast.textContent = message;
+    if (undoCallback) {
+      toast.innerHTML = `<span>${message}</span><button id="toast-undo-btn" style="background:none; border:none; color:var(--color-accent); font-weight:700; text-decoration:underline; cursor:pointer; margin-left:12px; font-family:inherit; font-size:0.9rem;">元に戻す</button>`;
+      const undoBtn = toast.querySelector('#toast-undo-btn');
+      if (undoBtn) {
+        undoBtn.onclick = (e) => {
+          e.stopPropagation();
+          undoCallback();
+          toast.textContent = '取り消しました';
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+              if (!toast.classList.contains('show')) {
+                toast.classList.add('hidden');
+              }
+            }, 300);
+          }, 1000);
+        };
+      }
+    } else {
+      toast.textContent = message;
+    }
+
     toast.classList.add('show');
     toast.classList.remove('hidden');
 
