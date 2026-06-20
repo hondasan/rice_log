@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 背景を少し透過させて、丸みのあるおにぎりを手書き風の緩い曲線で描画 -->
+  <path d="M 50 18 C 62 18, 83 67, 78 78 C 73 88, 27 88, 22 78 C 17 67, 38 18, 50 18 Z" fill="#FFFFFF" stroke="#3E3A35" stroke-width="6" stroke-linejoin="round" />
+  <!-- のり：下部に少し丸みを帯びた形状 -->
+  <path d="M 38 73 Q 50 71 62 73 L 60 87 Q 50 88 40 87 Z" fill="#3E3A35" />
+</svg>

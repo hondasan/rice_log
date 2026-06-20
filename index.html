@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="お米の在庫を簡単管理。あと何日分あるか一目でわかる、シンプルなお米管理アプリ。">
+  <title>こめログ — お米の在庫管理</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <h1 class="app-logo">🍚 こめログ</h1>
+    </header>
+
+    <!-- メインコンテンツ（タブ別） -->
+    <main class="app-main">
+      
+      <!-- タブ1: ホーム -->
+      <section id="tab-home" class="tab-content active">
+        <!-- 残量表示カード -->
+        <div class="card">
+          <div class="dashboard-grid">
+            <div class="remaining-info">
+              <span class="remaining-title">残りのお米</span>
+              <div class="remaining-amount" id="dash-remaining-amount">お米を登録してね 🍚</div>
+              <div class="remaining-days" id="dash-remaining-days">あと 0 日分</div>
+              <div class="settings-label-desc" id="dash-remaining-subtitle"></div>
+            </div>
+            <div class="canvas-container">
+              <canvas id="rice-jar-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 米不足警告アラート -->
+        <div class="alert-banner hidden" id="dash-alert-banner">
+          <span class="alert-banner-text">⚠️ お米がなくなりそうです！</span>
+          <span class="alert-banner-link" id="dash-alert-link">Amazonで買い足す 🛒</span>
+        </div>
+
+        <!-- ワンタップ入力＆よく使う合数 -->
+        <div class="card text-center">
+          <div class="one-tap-section">
+            <div class="form-label" style="margin-bottom:0;">今日の炊飯を記録</div>
+            <!-- メインワンタップボタン -->
+            <button class="one-tap-btn" id="dash-one-tap-btn">
+              <span class="one-tap-cups number-display" id="dash-one-tap-cups">2合</span>
+              <span class="one-tap-label">ワンタップ！</span>
+            </button>
+            
+            <!-- よく使う合数 -->
+            <div class="frequent-buttons" id="dash-frequent-buttons">
+              <!-- JSで動的に追加されます -->
+            </div>
+          </div>
+        </div>
+
+        <!-- まとめて入力ボタン -->
+        <button class="btn btn-secondary btn-block mb-12" onclick="CalendarView.showBatchInputModal()">
+          📅 数日分まとめて入力する
+        </button>
+
+        <!-- 最近の記録リスト -->
+        <div class="card">
+          <div class="card-title">最近の炊飯記録</div>
+          <div class="log-list" id="dash-recent-list">
+            <!-- JSで動的に追加されます -->
+          </div>
+        </div>
+      </section>
+
+      <!-- タブ2: カレンダー -->
+      <section id="tab-calendar" class="tab-content">
+        <div class="card">
+          <!-- カレンダーヘッダー -->
+          <div class="calendar-header">
+            <button class="calendar-nav-btn" onclick="CalendarView.navigateMonth(-1)">◀</button>
+            <span class="calendar-month-title" id="calendar-month-title">2026年 6月</span>
+            <button class="calendar-nav-btn" onclick="CalendarView.navigateMonth(1)">▶</button>
+          </div>
+
+          <!-- カレンダーテーブル -->
+          <table class="calendar-table">
+            <thead>
+              <tr>
+                <th style="color:var(--color-danger)">日</th>
+                <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th>
+                <th style="color:var(--color-primary)">土</th>
+              </tr>
+            </thead>
+            <tbody id="calendar-tbody">
+              <!-- カレンダーの日付セルが動的に追加されます -->
+            </tbody>
+          </table>
+
+          <!-- 月間合計 -->
+          <div class="calendar-summary" id="calendar-total-summary">
+            今月の合計: 0 合
+          </div>
+
+          <!-- 日別詳細パネル -->
+          <div class="day-detail-panel" id="calendar-day-detail">
+            <!-- 選択された日の詳細リストとクイック追加がここに表示されます -->
+          </div>
+        </div>
+      </section>
+
+      <!-- タブ3: お米管理 -->
+      <section id="tab-stock" class="tab-content">
+        <!-- 使用中のお米 -->
+        <div id="stock-active-section">
+          <!-- 使用中お米カードが動的挿入されます -->
+        </div>
+
+        <!-- 追加ボタン -->
+        <button class="btn btn-primary btn-block mb-12" onclick="Stock.showAddRiceModal()">
+          ➕ 新しいお米を追加する
+        </button>
+
+        <!-- ストック（未開封） -->
+        <div style="font-weight:700; margin:18px 0 8px 4px; font-size:0.95rem;">📦 ストック（未開封）</div>
+        <div id="stock-unopen-section">
+          <!-- ストックお米カードが動的挿入されます -->
+        </div>
+
+        <!-- 履歴アコーディオン -->
+        <div class="stock-history-header" onclick="Stock.toggleHistory()">
+          <span>📖 使い切ったお米の履歴 <span id="stock-history-count" style="font-size:0.8rem; font-weight:normal;">(0件)</span></span>
+          <span id="stock-history-arrow">▼</span>
+        </div>
+        <div class="stock-history-list collapsed" id="stock-history-list">
+          <!-- 履歴アイテムが動的挿入されます -->
+        </div>
+      </section>
+
+      <!-- タブ4: 統計 -->
+      <section id="tab-stats" class="tab-content">
+        <!-- 期間切替とナビゲーション -->
+        <div class="stats-header">
+          <div class="stats-segment">
+            <button class="stats-segment-btn active" id="stats-btn-monthly">月間</button>
+            <button class="stats-segment-btn" id="stats-btn-yearly">年間</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="calendar-nav-btn" style="width:32px; height:32px;" id="stats-prev-btn">◀</button>
+            <span id="stats-date-title" style="font-weight:700; font-size:0.95rem; min-width:80px; text-align:center;"></span>
+            <button class="calendar-nav-btn" style="width:32px; height:32px;" id="stats-next-btn">▶</button>
+          </div>
+        </div>
+
+        <!-- グラフカード -->
+        <div class="card stats-chart-card">
+          <canvas id="stats-chart-canvas" class="chart-canvas"></canvas>
+        </div>
+
+        <!-- 統計詳細サマリーカード -->
+        <div class="card" id="stats-detail-card">
+          <!-- JSで動的に追加されます -->
+        </div>
+      </section>
+
+      <!-- タブ5: 設定 -->
+      <section id="tab-settings" class="tab-content">
+        <!-- JSのrenderSettingsでHTMLが構築されます -->
+      </section>
+
+    </main>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="toast hidden" aria-live="polite"></div>
+
+    <!-- ボトムナビゲーション -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="home">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">ホーム</span>
+      </button>
+      <button class="nav-btn" data-tab="calendar">
+        <span class="nav-icon">📅</span>
+        <span class="nav-label">履歴</span>
+      </button>
+      <button class="nav-btn" data-tab="stock">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">お米</span>
+      </button>
+      <button class="nav-btn" data-tab="stats">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">統計</span>
+      </button>
+      <button class="nav-btn" data-tab="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">設定</span>
+      </button>
+    </nav>
+
+    <!-- モーダル（共通オーバーレイ） -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div id="modal-content" class="modal-content">
+        <!-- 動的に中身が書き換わります -->
+      </div>
+    </div>
+  </div>
+
+  <!-- スクリプト読み込み -->
+  <script src="js/store.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/stock.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
