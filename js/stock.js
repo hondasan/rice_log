@@ -135,7 +135,9 @@ const Stock = (() => {
     if (amountEl && daysEl) {
       if (data.hasOpenRice) {
         amountEl.textContent = `残り 約 ${(data.remainingGram / 1000).toFixed(1)} kg`;
-        daysEl.textContent = `あと約 ${data.remainingDays}日分 🍚`;
+        const cupsPerGram = settings.cupsPerGram || 150;
+        const remainingCups = data.remainingGram / cupsPerGram;
+        daysEl.textContent = `あと約 ${remainingCups.toFixed(1)} 合 🍚`;
         
         // 残り3日以下で警告クラス
         if (data.remainingDays <= 3) {
@@ -156,7 +158,7 @@ const Stock = (() => {
         }
       } else {
         amountEl.textContent = 'お米を登録してね 🍚';
-        daysEl.textContent = 'あと 0 日分';
+        daysEl.textContent = 'あと 0 合';
         daysEl.className = 'remaining-days';
         if (subtitleEl) subtitleEl.textContent = '「お米」タブから追加・開封できます';
       }
