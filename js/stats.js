@@ -105,27 +105,31 @@ const StatsView = (() => {
    * 指定年月のお米の正味消費量（kg）を計算する（使い切り分＋現在使用中の消費分）
    */
   function getActualConsumptionKg(year, month) {
+    const logs = Store.getCookingLogsByMonth(year, month);
     const stocks = Store.getRiceStocks();
-    const logs = Store.getCookingLogs();
     const settings = Store.getSettings();
     const cupsPerGram = settings.cupsPerGram || 150;
 
-    const targetMonthStr = `${year}-${String(month).padStart(2, '0')}`;
     let totalGram = 0;
 
-    // 1. その月に使い切ったお米
-    const finishedInMonth = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetMonthStr));
-    finishedInMonth.forEach(rice => {
-      const consumed = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
-      totalGram += consumed;
-    });
+    // 1. その月の炊飯ログ分（合 ➔ グラム）
+    const loggedCups = logs.reduce((sum, log) => sum + log.cups, 0);
+    totalGram += (loggedCups * cupsPerGram);
 
-    // 2. その月に使用中の（まだ使い切っていない）お米から、今月消費された炊飯ログ分
-    const activeStocks = stocks.filter(s => s.isOpen && !s.isFinished);
-    activeStocks.forEach(rice => {
-      const riceLogs = logs.filter(log => log.date >= rice.openDate && log.date.startsWith(targetMonthStr));
-      const consumedCups = riceLogs.reduce((sum, log) => sum + log.cups, 0);
-      totalGram += (consumedCups * cupsPerGram);
+    // 2. その月に使い切ったお米の「未記録補正分」を加算
+    const targetMonthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const finishedInMonth = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetMonthStr));
+
+    finishedInMonth.forEach(rice => {
+      const allLogs = Store.getCookingLogs();
+      const riceLogs = allLogs.filter(log => log.date >= rice.openDate && log.date <= rice.finishedDate);
+      const loggedCupsForRice = riceLogs.reduce((sum, log) => sum + log.cups, 0);
+      const loggedGramForRice = loggedCupsForRice * cupsPerGram;
+
+      const actualConsumedGram = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
+      const adjustmentGram = Math.max(0, actualConsumedGram - loggedGramForRice);
+
+      totalGram += adjustmentGram;
     });
 
     return totalGram / 1000;
@@ -135,56 +139,137 @@ const StatsView = (() => {
    * 指定年のお米の正味消費量（kg）を計算する
    */
   function getActualConsumptionYearlyKg(year) {
+    const logs = Store.getCookingLogsByYear(year);
     const stocks = Store.getRiceStocks();
-    const logs = Store.getCookingLogs();
     const settings = Store.getSettings();
     const cupsPerGram = settings.cupsPerGram || 150;
 
-    const targetYearStr = `${year}-`;
     let totalGram = 0;
 
-    // 1. その年に使い切ったお米
-    const finishedInYear = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetYearStr));
-    finishedInYear.forEach(rice => {
-      const consumed = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
-      totalGram += consumed;
-    });
+    // 1. その年の炊飯ログ分（合 ➔ グラム）
+    const loggedCups = logs.reduce((sum, log) => sum + log.cups, 0);
+    totalGram += (loggedCups * cupsPerGram);
 
-    // 2. その年に使用中の（まだ使い切っていない）お米から、今年消費された炊飯ログ分
-    const activeStocks = stocks.filter(s => s.isOpen && !s.isFinished);
-    activeStocks.forEach(rice => {
-      const riceLogs = logs.filter(log => log.date >= rice.openDate && log.date.startsWith(targetYearStr));
-      const consumedCups = riceLogs.reduce((sum, log) => sum + log.cups, 0);
-      totalGram += (consumedCups * cupsPerGram);
+    // 2. その年に使い切ったお米の「未記録補正分」を加算
+    const targetYearStr = `${year}-`;
+    const finishedInYear = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetYearStr));
+
+    finishedInYear.forEach(rice => {
+      const allLogs = Store.getCookingLogs();
+      const riceLogs = allLogs.filter(log => log.date >= rice.openDate && log.date <= rice.finishedDate);
+      const loggedCupsForRice = riceLogs.reduce((sum, log) => sum + log.cups, 0);
+      const loggedGramForRice = loggedCupsForRice * cupsPerGram;
+
+      const actualConsumedGram = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
+      const adjustmentGram = Math.max(0, actualConsumedGram - loggedGramForRice);
+
+      totalGram += adjustmentGram;
     });
 
     return totalGram / 1000;
   }
 
   /**
-   * 月間ログを週別（1〜7日、8〜14日、15〜21日、22〜28日、29日〜月末）に分類・集計する
+   * 月間統計の各週の消費量（kg）を計算する（炊飯ログ分 ＋ 使い切り時の未記録補正分）
    */
-  function groupByWeek(logs) {
-    const weeklyCups = [0, 0, 0, 0, 0]; // 1〜5週
+  function getMonthlyWeeklyKg(year, month) {
+    const logs = Store.getCookingLogsByMonth(year, month);
+    const stocks = Store.getRiceStocks();
+    const settings = Store.getSettings();
+    const cupsPerGram = settings.cupsPerGram || 150;
 
+    const weeklyKg = [0, 0, 0, 0, 0]; // 1〜5週
+
+    // 1. 炊飯ログからの集計（合 ➔ kg）
     logs.forEach(log => {
       const dateObj = new Date(log.date);
       const day = dateObj.getDate();
+      const kg = (log.cups * cupsPerGram) / 1000;
 
       if (day <= 7) {
-        weeklyCups[0] += log.cups;
+        weeklyKg[0] += kg;
       } else if (day <= 14) {
-        weeklyCups[1] += log.cups;
+        weeklyKg[1] += kg;
       } else if (day <= 21) {
-        weeklyCups[2] += log.cups;
+        weeklyKg[2] += kg;
       } else if (day <= 28) {
-        weeklyCups[3] += log.cups;
+        weeklyKg[3] += kg;
       } else {
-        weeklyCups[4] += log.cups;
+        weeklyKg[4] += kg;
       }
     });
 
-    return weeklyCups;
+    // 2. その月に使い切ったお米の「未記録補正分」を加算
+    const targetMonthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const finishedInMonth = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetMonthStr));
+
+    finishedInMonth.forEach(rice => {
+      const allLogs = Store.getCookingLogs();
+      const riceLogs = allLogs.filter(log => log.date >= rice.openDate && log.date <= rice.finishedDate);
+      const loggedCups = riceLogs.reduce((sum, log) => sum + log.cups, 0);
+      const loggedGram = loggedCups * cupsPerGram;
+
+      const actualConsumedGram = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
+      const adjustmentGram = Math.max(0, actualConsumedGram - loggedGram);
+
+      if (adjustmentGram > 0) {
+        const finishedDay = new Date(rice.finishedDate).getDate();
+        const adjKg = adjustmentGram / 1000;
+
+        if (finishedDay <= 7) {
+          weeklyKg[0] += adjKg;
+        } else if (finishedDay <= 14) {
+          weeklyKg[1] += adjKg;
+        } else if (finishedDay <= 21) {
+          weeklyKg[2] += adjKg;
+        } else if (finishedDay <= 28) {
+          weeklyKg[3] += adjKg;
+        } else {
+          weeklyKg[4] += adjKg;
+        }
+      }
+    });
+
+    return weeklyKg;
+  }
+
+  /**
+   * 年間統計の各月の消費量（kg）を計算する（炊飯ログ分 ＋ 使い切り時の未記録補正分）
+   */
+  function getYearlyMonthlyKg(year) {
+    const logs = Store.getCookingLogsByYear(year);
+    const stocks = Store.getRiceStocks();
+    const settings = Store.getSettings();
+    const cupsPerGram = settings.cupsPerGram || 150;
+
+    const monthlyKg = Array(12).fill(0);
+
+    // 1. 炊飯ログからの集計（合 ➔ kg）
+    logs.forEach(log => {
+      const monthIndex = new Date(log.date).getMonth(); // 0 ~ 11
+      monthlyKg[monthIndex] += (log.cups * cupsPerGram) / 1000;
+    });
+
+    // 2. その年に使い切ったお米の「未記録補正分」を加算
+    const targetYearStr = `${year}-`;
+    const finishedInYear = stocks.filter(s => s.isFinished && s.finishedDate.startsWith(targetYearStr));
+
+    finishedInYear.forEach(rice => {
+      const allLogs = Store.getCookingLogs();
+      const riceLogs = allLogs.filter(log => log.date >= rice.openDate && log.date <= rice.finishedDate);
+      const loggedCups = riceLogs.reduce((sum, log) => sum + log.cups, 0);
+      const loggedGram = loggedCups * cupsPerGram;
+
+      const actualConsumedGram = (rice.weightKg * 1000) - (rice.finishReason === 'discarded' ? (rice.remainingAtFinishGram || 0) : 0);
+      const adjustmentGram = Math.max(0, actualConsumedGram - loggedGram);
+
+      if (adjustmentGram > 0) {
+        const finishedMonthIndex = new Date(rice.finishedDate).getMonth();
+        monthlyKg[finishedMonthIndex] += (adjustmentGram / 1000);
+      }
+    });
+
+    return monthlyKg;
   }
 
   /**
@@ -205,8 +290,7 @@ const StatsView = (() => {
       canvas.height = rect.height * dpr;
       canvas.getContext('2d').scale(dpr, dpr);
 
-      const weeklyCups = groupByWeek(logs);
-      const weeklyKg = weeklyCups.map(cups => (cups * cupsPerGram) / 1000);
+      const weeklyKg = getMonthlyWeeklyKg(year, month);
       const labels = ['1週', '2週', '3週', '4週', '5週'];
       
       ChartUtil.drawBarChart(canvas, labels, weeklyKg, theme, 'kg');
@@ -217,8 +301,11 @@ const StatsView = (() => {
     const cookedDays = [...new Set(logs.map(log => log.date))].length;
     const totalCups = logs.reduce((sum, log) => sum + log.cups, 0);
     const totalKg = getActualConsumptionKg(year, month);
+    
+    // 使い切り（おしまいにした）補正分も含めた総合数
+    const totalCupsWithAdjustment = (totalKg * 1000) / cupsPerGram;
 
-    const avgDailyCups = totalCups / daysInMonth;
+    const avgDailyCups = totalCupsWithAdjustment / daysInMonth;
     const avgCookedDailyCups = cookedDays > 0 ? (totalCups / cookedDays) : 0;
     const modeCups = getModeCups(logs);
 
@@ -230,7 +317,7 @@ const StatsView = (() => {
         <div class="summary-grid">
           <div class="summary-item">
             <div class="summary-item-label">今月の炊飯量</div>
-            <div class="summary-item-value number-display">${totalCups.toFixed(1)}合 <span style="font-size:0.85rem; font-weight:500;">(${totalKg.toFixed(1)}kg)</span></div>
+            <div class="summary-item-value number-display">${totalCupsWithAdjustment.toFixed(1)}合 <span style="font-size:0.85rem; font-weight:500;">(${totalKg.toFixed(1)}kg)</span></div>
           </div>
           <div class="summary-item">
             <div class="summary-item-label">炊飯した日数</div>
@@ -280,7 +367,7 @@ const StatsView = (() => {
       canvas.height = rect.height * dpr;
       canvas.getContext('2d').scale(dpr, dpr);
 
-      const monthlyTotalKg = monthlyTotalCups.map(cups => (cups * cupsPerGram) / 1000);
+      const monthlyTotalKg = getYearlyMonthlyKg(year);
       const labels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(m => m + '月');
       ChartUtil.drawLineChart(canvas, labels, monthlyTotalKg, theme, 'kg');
     }
@@ -288,6 +375,9 @@ const StatsView = (() => {
     // サマリー数値の計算
     const totalCups = logs.reduce((sum, log) => sum + log.cups, 0);
     const totalKg = getActualConsumptionYearlyKg(year);
+    
+    // 使い切り（おしまいにした）補正分も含めた総合数
+    const totalCupsWithAdjustment = (totalKg * 1000) / cupsPerGram;
     
     // データのある月のみ、または12ヶ月で割る
     const activeMonths = monthlyTotalCups.filter(c => c > 0).length || 1;
@@ -314,7 +404,7 @@ const StatsView = (() => {
         <div class="summary-grid">
           <div class="summary-item">
             <div class="summary-item-label">年間合計炊飯量</div>
-            <div class="summary-item-value number-display">${totalCups.toFixed(0)}合 <span style="font-size:0.85rem; font-weight:500;">(${totalKg.toFixed(1)}kg)</span></div>
+            <div class="summary-item-value number-display">${totalCupsWithAdjustment.toFixed(0)}合 <span style="font-size:0.85rem; font-weight:500;">(${totalKg.toFixed(1)}kg)</span></div>
           </div>
           <div class="summary-item">
             <div class="summary-item-label">月平均消費量</div>
