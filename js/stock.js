@@ -220,17 +220,6 @@ const Stock = (() => {
       // 米不足（残量ゼロ、もしくは残日数3日以下かつ未開封ストックなしの場合）
       if (data.hasOpenRice && data.remainingDays <= 3 && data.stockGram === 0) {
         alertBanner.classList.remove('hidden');
-        // アフィリエイトリンクの銘柄カスタマイズ
-        const openRice = Store.getRiceStocks().find(s => s.isOpen && !s.isFinished);
-        const brandLabel = openRice ? BRAND_NAMES[openRice.brand] : 'お米';
-        const linkEl = document.getElementById('dash-alert-link');
-        if (linkEl) {
-          linkEl.textContent = `Amazonで「${brandLabel}」を買い足す 🛒`;
-          linkEl.onclick = () => {
-            const query = encodeURIComponent(brandLabel + ' 5kg');
-            window.open(`https://www.amazon.co.jp/s?k=${query}&tag=ricestockapp-22`, '_blank');
-          };
-        }
       } else {
         alertBanner.classList.add('hidden');
       }
@@ -608,24 +597,9 @@ const Stock = (() => {
         App.openModal(html);
       }, 800);
     } else {
-      // ストックがない場合は、買い足し案内
+      // ストックがない場合は、トーストでお知らせするのみ
       setTimeout(() => {
-        const html = `
-          <div class="modal-header">
-            <div class="modal-title">お米の買い足し</div>
-            <button class="modal-close" onclick="App.closeModal()">✕</button>
-          </div>
-          <div class="modal-body text-center">
-            <p style="margin-bottom:20px; font-weight:500;">
-              お米のストックがなくなりました。買い足しますか？
-            </p>
-            <div class="flex-row">
-              <button class="btn btn-secondary flex-1" onclick="App.closeModal()">閉じる</button>
-              <button class="btn btn-accent flex-1" onclick="window.open('https://www.amazon.co.jp/s?k=%E3%81%8A%E7%B1%B3+5kg&tag=ricestockapp-22', '_blank'); App.closeModal();">Amazonで購入 🛒</button>
-            </div>
-          </div>
-        `;
-        App.openModal(html);
+        App.showToast('お米のストックがなくなりました。買い足しをお忘れなく🌾', 4000);
       }, 800);
     }
   }
