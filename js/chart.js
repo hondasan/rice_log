@@ -266,7 +266,7 @@ const ChartUtil = (() => {
     /**
      * 統計用週別棒グラフを描画する（下から上に伸びるアニメーション付き）
      */
-    drawBarChart(canvas, labels, values, theme = 'light') {
+    drawBarChart(canvas, labels, values, theme = 'light', unit = 'kg') {
       const ctx = canvas.getContext('2d');
       const width = canvas.width;
       const height = canvas.height;
@@ -279,10 +279,18 @@ const ChartUtil = (() => {
       const duration = 45;
       let frame = 0;
 
-      const maxValue = Math.max(...values, 5); // 最低スケールを5合とする
-      const scaleMax = Math.ceil(maxValue / 5) * 5; // 5合単位でグリッドを合わせる
+      const maxVal = Math.max(...values, 0);
+      let scaleMax = 5;
+      
+      if (unit === 'kg') {
+        const tempMax = Math.max(maxVal, 1.0);
+        scaleMax = Math.ceil(tempMax * 2) / 2; // 0.5kg単位
+      } else {
+        const tempMax = Math.max(maxVal, 5);
+        scaleMax = Math.ceil(tempMax / 5) * 5;
+      }
 
-      const paddingLeft = 30;
+      const paddingLeft = 35; // ラベル幅を考慮して少し広げる
       const paddingRight = 10;
       const paddingTop = 20;
       const paddingBottom = 25;
@@ -315,8 +323,9 @@ const ChartUtil = (() => {
           ctx.lineTo(width - paddingRight, y);
           ctx.stroke();
 
-          // Y軸ラベル（合）
-          ctx.fillText(`${val}`, paddingLeft - 6, y);
+          // Y軸ラベル
+          const labelText = unit === 'kg' ? `${val.toFixed(1)}k` : `${val.toFixed(0)}`;
+          ctx.fillText(labelText, paddingLeft - 6, y);
         }
 
         // 棒グラフ本体の描画
@@ -344,7 +353,8 @@ const ChartUtil = (() => {
             ctx.fillStyle = isDark ? '#E8E2D9' : '#3E3A35';
             ctx.font = 'bold 11px "Outfit"';
             ctx.textAlign = 'center';
-            ctx.fillText(`${val.toFixed(1)}`, x + barW / 2, y - 8);
+            const valueText = unit === 'kg' ? `${val.toFixed(2)}kg` : `${val.toFixed(1)}合`;
+            ctx.fillText(valueText, x + barW / 2, y - 8);
           }
 
           // X軸ラベル
@@ -365,7 +375,7 @@ const ChartUtil = (() => {
     /**
      * 統計用月別折れ線グラフを描画する（左から右に伸びる線アニメーション付き）
      */
-    drawLineChart(canvas, labels, values, theme = 'light') {
+    drawLineChart(canvas, labels, values, theme = 'light', unit = 'kg') {
       const ctx = canvas.getContext('2d');
       const width = canvas.width;
       const height = canvas.height;
@@ -378,10 +388,18 @@ const ChartUtil = (() => {
       const duration = 60;
       let frame = 0;
 
-      const maxValue = Math.max(...values, 20); // 最低スケールを20合
-      const scaleMax = Math.ceil(maxValue / 20) * 20;
+      const maxVal = Math.max(...values, 0);
+      let scaleMax = 20;
+      
+      if (unit === 'kg') {
+        const tempMax = Math.max(maxVal, 3.0);
+        scaleMax = Math.ceil(tempMax / 2) * 2; // 2kg単位
+      } else {
+        const tempMax = Math.max(maxVal, 20);
+        scaleMax = Math.ceil(tempMax / 20) * 20;
+      }
 
-      const paddingLeft = 30;
+      const paddingLeft = 35; // ラベル幅を考慮して少し広げる
       const paddingRight = 15;
       const paddingTop = 20;
       const paddingBottom = 25;
@@ -414,8 +432,9 @@ const ChartUtil = (() => {
           ctx.lineTo(width - paddingRight, y);
           ctx.stroke();
 
-          // Y軸ラベル（合）
-          ctx.fillText(`${val}`, paddingLeft - 6, y);
+          // Y軸ラベル
+          const labelText = unit === 'kg' ? `${val.toFixed(1)}k` : `${val.toFixed(0)}`;
+          ctx.fillText(labelText, paddingLeft - 6, y);
         }
 
         // 描画用の座標計算
@@ -485,12 +504,13 @@ const ChartUtil = (() => {
             ctx.fill();
             ctx.stroke();
 
-            // 値の表示（ピーク時や一部だけ表示すると見やすいが、年間は全月表示）
+            // 値の表示
             if (values[i] > 0) {
               ctx.fillStyle = isDark ? '#E8E2D9' : '#3E3A35';
               ctx.font = 'bold 10px "Outfit"';
               ctx.textAlign = 'center';
-              ctx.fillText(`${values[i].toFixed(0)}`, p.x, p.y - 10);
+              const valueText = unit === 'kg' ? `${values[i].toFixed(1)}kg` : `${values[i].toFixed(0)}`;
+              ctx.fillText(valueText, p.x, p.y - 10);
             }
           }
 

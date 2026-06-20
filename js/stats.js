@@ -206,9 +206,10 @@ const StatsView = (() => {
       canvas.getContext('2d').scale(dpr, dpr);
 
       const weeklyCups = groupByWeek(logs);
+      const weeklyKg = weeklyCups.map(cups => (cups * cupsPerGram) / 1000);
       const labels = ['1週', '2週', '3週', '4週', '5週'];
       
-      ChartUtil.drawBarChart(canvas, labels, weeklyCups, theme);
+      ChartUtil.drawBarChart(canvas, labels, weeklyKg, theme, 'kg');
     }
 
     // サマリー数値の計算
@@ -279,8 +280,9 @@ const StatsView = (() => {
       canvas.height = rect.height * dpr;
       canvas.getContext('2d').scale(dpr, dpr);
 
+      const monthlyTotalKg = monthlyTotalCups.map(cups => (cups * cupsPerGram) / 1000);
       const labels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(m => m + '月');
-      ChartUtil.drawLineChart(canvas, labels, monthlyTotalCups, theme);
+      ChartUtil.drawLineChart(canvas, labels, monthlyTotalKg, theme, 'kg');
     }
 
     // サマリー数値の計算
