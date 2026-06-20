@@ -434,7 +434,8 @@ const Stock = (() => {
               <div class="stock-progress-bar" style="width: ${progress}%; background-color: ${barColor};"></div>
             </div>
             <div class="stock-actions" id="active-card-actions">
-              <button class="btn btn-secondary btn-block" onclick="Stock.showFinishFlow('${openRice.id}')">おしまいにする</button>
+              <button class="btn btn-secondary flex-1" onclick="Stock.showFinishFlow('${openRice.id}')">おしまいにする</button>
+              <button class="btn btn-danger btn-sm" style="padding: 10px; min-width:44px;" onclick="Stock.deleteRiceStock('${openRice.id}')" title="削除">🗑️</button>
             </div>
             <div class="inline-action-panel hidden" id="finish-flow-panel">
               <!-- 使い切りフローがここに展開されます -->
@@ -475,7 +476,10 @@ const Stock = (() => {
                   <div class="card-title" style="margin-bottom:0;">${brandName} (${rice.weightKg}kg)</div>
                   <div class="log-date" style="margin-top:4px;">購入日: ${rice.purchaseDate}</div>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="Stock.openStockRice('${rice.id}')">開封する</button>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-primary btn-sm" onclick="Stock.openStockRice('${rice.id}')">開封する</button>
+                  <button class="btn btn-danger btn-sm" style="padding: 8px 10px;" onclick="Stock.deleteRiceStock('${rice.id}')" title="削除">🗑️</button>
+                </div>
               </div>
             </div>
           `;
@@ -502,14 +506,17 @@ const Stock = (() => {
           const openStr = rice.openDate || '未開封';
           const reasonText = rice.finishReason === 'ate' ? '🍚食べきった' : `🗑 約${(rice.remainingAtFinishGram / 1000).toFixed(1)}kg廃棄`;
           return `
-            <div class="history-item">
-              <div class="history-item-top">
-                <span>${brandName} (${rice.weightKg}kg)</span>
-                <span>${reasonText}</span>
+            <div class="history-item" style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div class="history-item-top">
+                  <span>${brandName} (${rice.weightKg}kg)</span>
+                  <span>${reasonText}</span>
+                </div>
+                <div class="history-item-sub">
+                  期間: ${openStr} 〜 ${rice.finishedDate}
+                </div>
               </div>
-              <div class="history-item-sub">
-                期間: ${openStr} 〜 ${rice.finishedDate}
-              </div>
+              <button class="btn btn-danger btn-sm" style="padding: 6px 10px; background-color:transparent; border:1px solid var(--color-danger); color:var(--color-danger);" onclick="Stock.deleteRiceStock('${rice.id}')" title="履歴から削除">🗑️ 削除</button>
             </div>
           `;
         }).join('');
@@ -785,6 +792,13 @@ const Stock = (() => {
     App.showToast(`${cups}合 記録しました ✓`);
   }
 
+  function deleteRiceStock(id) {
+    if (confirm('このお米のデータを完全に削除しますか？\n（これまでの消費計算や履歴から消去されます）')) {
+      Store.deleteRiceStock(id);
+      App.showToast('お米データを削除しました');
+    }
+  }
+
   return {
     addFreqCookingLog,
     calculateRemaining,
@@ -803,6 +817,7 @@ const Stock = (() => {
     setWeight,
     selectBrand,
     saveNewRice,
+    deleteRiceStock,
     toggleHistory() {
       // 履歴リストのアコーディオン開閉
       const list = document.getElementById('stock-history-list');
